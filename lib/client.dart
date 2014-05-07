@@ -45,13 +45,12 @@ class SpeakerClient {
 
   var _constraints = {};
 
-  SpeakerClient(url, { room: '' , user: ''}): _socket = new WebSocket(url) {
+  SpeakerClient(url, { room: ''}): _socket = new WebSocket(url) {
     _messageStream = _messageController.stream.asBroadcastStream();
 
     _socket.onOpen.listen((e) {
       _send('join', {
-        'room': room,
-        'user': user
+        'room': room
       });
     });
 

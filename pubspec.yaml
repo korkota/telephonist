@@ -2,5 +2,6 @@ name: telephonist
 description: A sample command-line application
 dependencies:
   browser: any
+  redis_client: any
   ripple: any
   stomp: any

@@ -4,6 +4,8 @@ import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:redis_client/redis_client.dart';
+
 /**
  * Сигнальный сервер для WebRTC.
  */
@@ -33,7 +35,7 @@ class TelephonistServer {
    */
   Stream _messages;
 
-  TelephonistServer() {
+  TelephonistServer({String id, RedisClient client}) {
     // Получаем поток, на который можно подписаться множество раз.
     _messages = _messageController.stream.asBroadcastStream();
 
