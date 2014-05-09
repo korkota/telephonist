@@ -4,13 +4,13 @@ import 'dart:html';
 import 'dart:convert';
 import 'dart:async';
 
-class SpeakerClient {
+class TelephonistClient {
   WebSocket _socket;
-  List<int> _sockets;
-  int _self;
+  List<String> _sockets;
+  String _self;
 
-  var _connections = new Map<int,RtcPeerConnection>();
-  var _data = new Map<int,RtcDataChannel>();
+  var _connections = new Map<String, RtcPeerConnection>();
+  var _data = new Map<String, RtcDataChannel>();
   var _streams = new List<MediaStream>();
 
   var _messageController = new StreamController();
@@ -45,7 +45,7 @@ class SpeakerClient {
 
   var _constraints = {};
 
-  SpeakerClient(url, { room: ''}): _socket = new WebSocket(url) {
+  TelephonistClient(url, { room: ''}): _socket = new WebSocket(url) {
     _messageStream = _messageController.stream.asBroadcastStream();
 
     _socket.onOpen.listen((e) {
@@ -211,11 +211,11 @@ class SpeakerClient {
     _addDataChannel(id, channel);
   }
 
-  _createOffer(int socket, RtcPeerConnection pc) {
+  _createOffer(id, RtcPeerConnection pc) {
     pc.createOffer(_constraints).then((RtcSessionDescription s) {
       pc.setLocalDescription(s);
       _send('offer', {
-          'id': socket,
+          'id': id,
           'description': {
             'sdp': s.sdp,
             'type': s.type
@@ -224,11 +224,11 @@ class SpeakerClient {
     });
   }
 
-  _createAnswer(int socket, RtcPeerConnection pc) {
+  _createAnswer(id, RtcPeerConnection pc) {
     pc.createAnswer(_constraints).then((RtcSessionDescription s) {
       pc.setLocalDescription(s);
       _send('answer', {
-          'id': socket,
+          'id': id,
           'description': {
             'sdp': s.sdp,
             'type': s.type

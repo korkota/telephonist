@@ -5,11 +5,16 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:redis_client/redis_client.dart';
+import "package:stomp/stomp.dart";
+import "package:stomp/vm.dart" as Stomp;
 
 /**
  * Сигнальный сервер для WebRTC.
  */
 class TelephonistServer {
+  String id;
+  RedisClient redisClient;
+  StompClient stompClient;
   /*
    * Нужно убрать эту херню или сделать опциональное создание собственного HTTP-сервера.
    */
@@ -18,12 +23,12 @@ class TelephonistServer {
   /**
    * Набор socket.hashCode и соответсвующих им сокетов.
    */
-  var _sockets = new Map<int, WebSocket>();
+  var _sockets = new Map<String, WebSocket>();
   
   /**
    * Набор идентификатов комнат и хэшей сокетов их участников.
    */
-  var _rooms = new Map<String, List<int>>();
+  var _rooms = new Map<String, List<String>>();
 
   /**
    * Через этот контроллер мы отправляем сообщения подписчикам.
@@ -35,76 +40,89 @@ class TelephonistServer {
    */
   Stream _messages;
 
-  TelephonistServer({String id, RedisClient client}) {
+  TelephonistServer({this.id, this.redisClient, this.stompClient}) {
     // Получаем поток, на который можно подписаться множество раз.
     _messages = _messageController.stream.asBroadcastStream();
+    
+    stompClient.subscribeJson("0", '/' + this.id,
+      (Map<String, String> headers, Object message) {
+        print("Recieve $message");
+        WebSocket socket = _sockets[message['destination']];
+        if (socket != null) socket.add(message['data']);
+      }
+    );
 
     onJoin.listen((message) {
-      var socket = message['_socket'];
+      WebSocket socket = message['_socket'];
 
-      // Если в комнате никого нет, то создаем её.
-      if (_rooms[message['room']] == null) {
-        _rooms[message['room']] = new List<int>();
-      }
-
-      // Рассылаем всем участникам комнаты уведомление о появлении нового пользователя в комнате.
-      _rooms[message['room']].forEach((client) {
-        _sockets[client].add(JSON.encode({
-          'type': 'new',
-          'id': socket.hashCode
+      redisClient.smembers('room:' + message['room']).then((Set<String> sockets) {
+        var newMessage = {'type': 'new', 'id': this.id + ':' + socket.hashCode.toString()};
+        
+        newMessage = JSON.encode(newMessage);
+        
+        sockets.forEach((String socketId) {
+          String serverId = socketId.split(':').first;
+          stompClient.sendJson('/' + serverId, {'destination': socketId, 'data': newMessage});
+        });
+        
+        socket.add(JSON.encode({
+          'type': 'peers',
+          'connections': sockets.toList(),
+          'you': this.id + ':' + socket.hashCode.toString()
         }));
       });
 
-      // Отправляем новому пользователю список пользовтелей в комнате и его собственный идентификатор.
-      socket.add(JSON.encode({
-        'type': 'peers',
-        'connections': _rooms[message['room']],
-        'you': socket.hashCode
-      }));
-
-      // Добавляем нового пользовтеля в комнату.
-      _rooms[message['room']].add(socket.hashCode);
+      redisClient.sadd('room:' + message['room'], this.id + ':' + socket.hashCode.toString());
+      redisClient.sadd(this.id + ':' + socket.hashCode.toString(), message['room']);
     });
 
     onOffer.listen((message) {
       var socket = message['_socket'];
 
-      // Сокет собеседника, которомы мы отправляем предложение на установку соединения.
-      var soc = _sockets[message['id']];
-
-      // Отрпавляем предложение на установку соединения.
-      soc.add(JSON.encode({
+      String serverId = message['id'].split(':').first;
+      
+      var newMessage = {
         'type': 'offer',
         'description': message['description'],
-        'id': socket.hashCode
-      }));
+        'id': this.id + ':' + socket.hashCode.toString()
+       };
+      
+      newMessage = JSON.encode(newMessage);
+      
+      stompClient.sendJson('/' + serverId, {'destination': message['id'], 'data': newMessage});
     });
 
     onAnswer.listen((message) {
       var socket = message['_socket'];
 
-      // Сокет собеседника, которому мы отправляем ответ на предложение об установке соединения.
-      var soc = _sockets[message['id']];
-
-      // Отправляем ответ.
-      soc.add(JSON.encode({
+      String serverId = message['id'].split(':').first;
+      
+      var newMessage = {
         'type': 'answer',
         'description': message['description'],
-        'id': socket.hashCode
-      }));
+        'id': this.id + ':' + socket.hashCode.toString()
+      };
+      
+      newMessage = JSON.encode(newMessage);
+      
+      stompClient.sendJson('/' + serverId, {'destination': message['id'], 'data': newMessage});
     });
 
     onCandidate.listen((message) {
       var socket = message['_socket'];
 
-      var soc = _sockets[message['id']];
+      String serverId = message['id'].split(':').first;
 
-      soc.add(JSON.encode({
+      var newMessage = {
         'type': 'candidate',
         'label': message['label'],
         'candidate': message['candidate'],
-        'id': socket.hashCode
-      }));
+        'id': this.id + ':' + socket.hashCode.toString()
+      };
+      
+      newMessage = JSON.encode(newMessage);
+      
+      stompClient.sendJson('/' + serverId, {'destination': message['id'], 'data': newMessage});
     });
   }
 
@@ -133,7 +151,7 @@ class TelephonistServer {
       _server = server;
 
       _server.transform(new WebSocketTransformer()).listen((WebSocket socket) {
-        _sockets[socket.hashCode] = socket;
+        _sockets[this.id + ':' + socket.hashCode.toString()] = socket;
 
         socket.listen((m) {
           var message = JSON.decode(m);
@@ -141,21 +159,21 @@ class TelephonistServer {
           _messageController.add(message);
         },
         onDone: () {
-          int id = socket.hashCode;
+          var id = this.id + ':' + socket.hashCode.toString();
           _sockets.remove(id);
 
-          _rooms.forEach((room, clients) {
-            if (clients.contains(id)) {
-              clients.remove(id);
-
-              clients.forEach((client) {
-                _sockets[client].add(JSON.encode({
-                  'type': 'leave',
-                  'id': id
-                }));
-              });
-            }
-          });
+//          _rooms.forEach((room, clients) {
+//            if (clients.contains(id)) {
+//              clients.remove(id);
+//
+//              clients.forEach((client) {
+//                _sockets[client].add(JSON.encode({
+//                  'type': 'leave',
+//                  'id': id
+//                }));
+//              });
+//            }
+//          });
         });
       });
 

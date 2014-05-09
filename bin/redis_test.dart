@@ -1,7 +1,7 @@
 import "package:redis_client/redis_client.dart";
 
 main() {
-  var connectionString = "localhost:6379";
+  var connectionString = "127.0.0.1:6379";
   RedisClient.connect(connectionString)
       .then((RedisClient client) {
         // Use your client here. Eg.:
