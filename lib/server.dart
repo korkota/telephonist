@@ -15,21 +15,17 @@ class TelephonistServer {
   String id;
   RedisClient redisClient;
   StompClient stompClient;
+  
   /*
    * Нужно убрать эту херню или сделать опциональное создание собственного HTTP-сервера.
    */
   HttpServer _server;
 
   /**
-   * Набор socket.hashCode и соответсвующих им сокетов.
+   * ID сокета -> cокет.
    */
   var _sockets = new Map<String, WebSocket>();
   
-  /**
-   * Набор идентификатов комнат и хэшей сокетов их участников.
-   */
-  var _rooms = new Map<String, List<String>>();
-
   /**
    * Через этот контроллер мы отправляем сообщения подписчикам.
    */
@@ -44,7 +40,7 @@ class TelephonistServer {
     // Получаем поток, на который можно подписаться множество раз.
     _messages = _messageController.stream.asBroadcastStream();
     
-    stompClient.subscribeJson("0", '/' + this.id,
+    stompClient.subscribeJson('0', '/' + this.id,
       (Map<String, String> headers, Object message) {
         print("Recieve $message");
         WebSocket socket = _sockets[message['destination']];
