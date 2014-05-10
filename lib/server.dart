@@ -162,18 +162,23 @@ class TelephonistServer {
           var id = this.id + ':' + socket.hashCode.toString();
           _sockets.remove(id);
 
-//          _rooms.forEach((room, clients) {
-//            if (clients.contains(id)) {
-//              clients.remove(id);
-//
-//              clients.forEach((client) {
-//                _sockets[client].add(JSON.encode({
-//                  'type': 'leave',
-//                  'id': id
-//                }));
-//              });
-//            }
-//          });
+          redisClient.smembers(id)
+          .then((Set<String> rooms) => Future.wait(rooms.map((room) => redisClient.srem('room:' + room.toString(), id))))
+          .then((_) => redisClient.smembers(id))
+          .then((Set<String> rooms) => Future.wait(rooms.map((room) => redisClient.smembers('room:' + room.toString()))))
+          .then((soketsIdsOfRoom) {
+            soketsIdsOfRoom.forEach((socketsIds) => socketsIds.forEach((socketId) {
+              String serverId = socketId.split(':').first;  
+              
+              var data = JSON.encode({
+                'type': 'leave',
+                'id': id
+              });
+              
+              stompClient.sendJson('/' + serverId, {'destination': socketId, 'data': data}); 
+            }));
+          })
+          .then((_) => redisClient.del(id));
         });
       });
 

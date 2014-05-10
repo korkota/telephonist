@@ -14,7 +14,7 @@ void main() {
 
   speaker.onAdd.listen((message) {
     var video = new VideoElement()
-      ..id = 'remote${message['id']}'
+      ..id = 'remote${message['id'].replaceAll(':', '_')}'
       ..autoplay = true
       ..src = Url.createObjectUrl(message['stream']);
 
@@ -22,6 +22,6 @@ void main() {
   });
 
   speaker.onLeave.listen((message) {
-    document.query('#remote${message['id']}').remove();
+    document.query('#remote${message['id'].replaceAll(':', '_')}').remove();
   });
 }
