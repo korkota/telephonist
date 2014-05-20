@@ -4,7 +4,7 @@ import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:redis_client/redis_client.dart';
+import 'package:telephonist/redis_client.dart';
 import "package:stomp/stomp.dart";
 import "package:stomp/vm.dart" as Stomp;
 
@@ -14,7 +14,7 @@ import "package:stomp/vm.dart" as Stomp;
 class TelephonistServer {
   String id;
   RedisClient redisClient;
-  StompClient stompClient;
+  List<StompClient> stompClients;
   
   /*
    * Нужно убрать эту херню или сделать опциональное создание собственного HTTP-сервера.
@@ -36,17 +36,20 @@ class TelephonistServer {
    */
   Stream _messages;
 
-  TelephonistServer({this.id, this.redisClient, this.stompClient}) {
+  TelephonistServer({this.id, this.redisClient, this.stompClients}) {
+    
     // Получаем поток, на который можно подписаться множество раз.
     _messages = _messageController.stream.asBroadcastStream();
     
-    stompClient.subscribeJson('0', '/' + this.id,
-      (Map<String, String> headers, Object message) {
-        print("Recieve $message");
-        WebSocket socket = _sockets[message['destination']];
-        if (socket != null) socket.add(message['data']);
-      }
-    );
+    stompClients.forEach((stompClient) {
+      stompClient.subscribeJson('0', '/' + this.id,
+        (Map<String, String> headers, Object message) {
+          print("Recieve $message");
+          WebSocket socket = _sockets[message['destination']];
+          if (socket != null) socket.add(message['data']);
+        }
+      );
+    });
 
     onJoin.listen((message) {
       WebSocket socket = message['_socket'];
@@ -58,7 +61,10 @@ class TelephonistServer {
         
         sockets.forEach((String socketId) {
           String serverId = socketId.split(':').first;
-          stompClient.sendJson('/' + serverId, {'destination': socketId, 'data': newMessage});
+          
+          stompClients
+          .firstWhere((StompClient stompClient) => !stompClient.isDisconnected)
+          .sendJson('/' + serverId, {'destination': socketId, 'data': newMessage});
         });
         
         socket.add(JSON.encode({
@@ -85,7 +91,9 @@ class TelephonistServer {
       
       newMessage = JSON.encode(newMessage);
       
-      stompClient.sendJson('/' + serverId, {'destination': message['id'], 'data': newMessage});
+      stompClients
+      .firstWhere((StompClient stompClient) => !stompClient.isDisconnected)
+      .sendJson('/' + serverId, {'destination': message['id'], 'data': newMessage});
     });
 
     onAnswer.listen((message) {
@@ -101,7 +109,9 @@ class TelephonistServer {
       
       newMessage = JSON.encode(newMessage);
       
-      stompClient.sendJson('/' + serverId, {'destination': message['id'], 'data': newMessage});
+      stompClients
+      .firstWhere((StompClient stompClient) => !stompClient.isDisconnected)
+      .sendJson('/' + serverId, {'destination': message['id'], 'data': newMessage});
     });
 
     onCandidate.listen((message) {
@@ -118,7 +128,9 @@ class TelephonistServer {
       
       newMessage = JSON.encode(newMessage);
       
-      stompClient.sendJson('/' + serverId, {'destination': message['id'], 'data': newMessage});
+      stompClients
+      .firstWhere((StompClient stompClient) => !stompClient.isDisconnected)
+      .sendJson('/' + serverId, {'destination': message['id'], 'data': newMessage});
     });
   }
 
@@ -171,7 +183,9 @@ class TelephonistServer {
                 'id': id
               });
               
-              stompClient.sendJson('/' + serverId, {'destination': socketId, 'data': data}); 
+              stompClients
+              .firstWhere((StompClient stompClient) => !stompClient.isDisconnected)
+              .sendJson('/' + serverId, {'destination': socketId, 'data': data}); 
             }));
           })
           .then((_) => redisClient.del(id));
