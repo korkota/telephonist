@@ -7,7 +7,12 @@
     <link rel="stylesheet" href="clientwebrtc.css">
   </head>
   <body>
-
+    <div id="opponents"></div><div id="chat">
+      <div id="messages"></div>
+      <div class="buttons">
+        <input id="message" type="text" placeholder="Input the message.."> <input id="sendButton" type="button" value="Send">
+      </div>
+    </div>
     <script type="application/dart" src="clientwebrtc.dart"></script>
     <script src="packages/browser/dart.js"></script>
   </body>

@@ -206,7 +206,7 @@ class TelephonistClient {
     _data[id] = channel;
   }
 
-  _createDataChannel(id, RtcPeerConnection pc, { label: 'fileTransfer' }) {
+  _createDataChannel(id, RtcPeerConnection pc, { label: 'RTCDataChannel' }) {
     var channel = pc.createDataChannel(label, { 'reliable': false });
     _addDataChannel(id, channel);
   }

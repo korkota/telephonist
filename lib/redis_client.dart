@@ -45,7 +45,7 @@ class RedisClient {
 
   Future<Set<String>> smembers(String key) => _callAPI('smembers', [key]);
   
-  Future<String> srem(String key) => _callAPI('srem', [key]);
+  Future<String> srem(String key, String value) => _callAPI('srem', [key, value]);
   
   Future<String> del(String key) => _callAPI('del', [key]);
 }
