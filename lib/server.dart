@@ -38,7 +38,7 @@ class TelephonistServer {
     _messages = _messageController.stream.asBroadcastStream();
     
     // Подписываемся на прием сообщений от других серверов.
-    stompClients.subscribeJson('/${this.id}', _onStompMessage);
+    stompClients.subscribeJson(id, '/${id}', _onStompMessage);
 
     onJoin.listen((message) {
       if (message['room'] == null) return;
@@ -54,7 +54,7 @@ class TelephonistServer {
         newMessage = JSON.encode(newMessage);
         
         sockets.map((String socketId) => new SocketId(socketId)).forEach((SocketId socketId) {
-          stompClients.sendJson('/${socketId.serverId}', {
+          stompClients.sendJson("/${socketId.serverId}", {
             'destination': socketId.toString(), 
             'data': newMessage
             });
@@ -135,9 +135,13 @@ class TelephonistServer {
   }
 
   void _onStompMessage(Map<String, String> headers, Object message) {
-    print("Recieve $message");
+    print("Server ${id} has got message: $message");
     WebSocket socket = _sockets[message['destination']];
-    if (socket != null) socket.add(message['data']);
+    if (socket != null) {
+      socket.add(message['data']);
+    } else {
+      print('Wrong destination!');
+    }
   }
 
   /**
@@ -161,7 +165,7 @@ class TelephonistServer {
   get onCandidate => _messages.where((m) => m['type'] == 'candidate');
 
   Future<TelephonistServer> listen(String host, num port) {
-    return HttpServer.bind(host, port).then((HttpServer server) {
+    return HttpServer.bind(host, port, shared: true).then((HttpServer server) {
       _server = server;
 
       _server.transform(new WebSocketTransformer()).listen((WebSocket socket) {

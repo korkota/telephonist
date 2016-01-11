@@ -110,7 +110,7 @@ class TelephonistClient {
 
   get onNew => _messages.where((m) => m['type'] == 'new');
 
-  get onPeers => _messages.where((m) => m['type'] == 'peers');
+  get onPeers => _messages.where((m) => m['type'] == 'peers').asBroadcastStream();
 
   get onLeave => _messages.where((m) => m['type'] == 'leave');
 
@@ -120,8 +120,10 @@ class TelephonistClient {
 
   get onData => _messageStream.where((m) => m['type'] == 'data');
 
-  createStream({ audio: false, video: false }) {
+  createStream({ audio: false, video: false }) async {
     var completer = new Completer<MediaStream>();
+
+    await onPeers.first;
 
     window.navigator.getUserMedia(audio: audio, video: video).then((stream) {
       var video = new VideoElement()

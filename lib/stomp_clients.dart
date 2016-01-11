@@ -13,10 +13,10 @@ class StompClients {
   
   StompClients(this._addresses);
   
-  Future<StompClients> connect() {
+  Future<StompClients> connect({login: 'admin', password: 'password'}) {
     Completer completer = new Completer();
     
-    Future.wait(_addresses.map((HostAndPort address) => Stomp.connect(address.host, port: address.port)))
+    Future.wait(_addresses.map((HostAndPort address) => Stomp.connect(address.host, port: address.port, login: login, passcode: password)))
     .then((List<StompClient> clients) {
       _clients = clients;
       completer.complete(this);
@@ -25,13 +25,13 @@ class StompClients {
     return completer.future;
   }
   
-  void subscribeJson(String destination, void onMessage(Map<String, String> headers, message)) {
-    _clients.forEach((StompClient client) => client.subscribeJson('0', destination, onMessage));
+  void subscribeJson(String id, String destination, void onMessage(Map<String, String> headers, message)) {
+    _clients.forEach((StompClient client) => client.subscribeJson(id, '/queue' + destination, onMessage));
   }
   
   void sendJson(String destination, message) {
     _clients
     .firstWhere((StompClient client) => !client.isDisconnected)
-    .sendJson(destination, message);
+    .sendJson('/queue' + destination, message);
   }
 }

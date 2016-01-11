@@ -1,7 +1,7 @@
 import "package:telephonist/redis_client.dart";
 
 main() {
-  RedisClient redisClient = new RedisClient(host: '192.168.2.101', port: 12000);
+  RedisClient redisClient = new RedisClient(host: '127.0.0.1', port: 12000);
   
   redisClient.set('dart', 'awesome!')
     .then((_) => redisClient.get('dart'))

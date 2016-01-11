@@ -5,3 +5,4 @@ dependencies:
   redis_client: any
   ripple: any
   stomp: any
+  args: any
