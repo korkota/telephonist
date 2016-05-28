@@ -5,9 +5,12 @@ import 'dart:convert';
 void main() {
   var params = Uri.splitQueryString(window.location.search.substring(1));
   
-  var telephonist = new TelephonistClient('ws://127.0.0.1:3000', room: params['roomId']);
-  
-  telephonist.createStream(video: true, audio: true).then((stream) {
+  var telephonist = new TelephonistClient('ws://${window.location.hostname}:3000/', room: params['roomId']);
+  bool enableVideo = params['enableVideo'] == 'true';
+  bool enableAudio = params['enableAudio'] == 'true';
+  bool enableData = params['enableData'] == 'true';
+
+  telephonist.createStream(video: enableVideo, audio: enableAudio, data: enableData).then((stream) {
     var video = new VideoElement()
       ..autoplay = true
       ..src = Url.createObjectUrl(stream);
@@ -25,7 +28,7 @@ void main() {
   });
 
   telephonist.onLeave.listen((message) {
-    document.query('#remote${message['id'].replaceAll(':', '_')}').remove();
+    querySelector('#remote${message['id'].replaceAll(':', '_')}')?.remove();
   });
   
   telephonist.onData.listen((message) {
@@ -33,9 +36,12 @@ void main() {
   });
   
   
-  querySelector("#sendButton").onClick.listen((e) {
+  querySelector("#messageForm").onSubmit.listen((e) {
+    e.preventDefault();
     String message = (querySelector("#message") as InputElement).value;
-    querySelector("#messages")..appendText(message)..appendHtml('<br>');;
+    querySelector("#messages")..appendText(message)..appendHtml('<br><hr>');
+    (querySelector("#messages").lastChild as Element).scrollIntoView();
     telephonist.send(message);
+    (querySelector("#message") as InputElement).value = '';
   });
 }

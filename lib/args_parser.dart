@@ -16,7 +16,7 @@ Map parseArgs(List<String> args) {
   parser.addOption('host',
       abbr: 'h',
       help: 'Host name.',
-      defaultsTo: '127.0.0.1'
+      defaultsTo: '0.0.0.0'
   );
 
   parser.addOption('port',

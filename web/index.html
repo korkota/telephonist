@@ -3,11 +3,56 @@
 <html>
   <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ClientWebRTC</title>
-    <link rel="stylesheet" href="clientwebrtc.css">
+    <link rel="stylesheet" href="packages/bootstrap/css/bootstrap.css">
+    <link rel="stylesheet" href="packages/bootstrap/css/bootstrap-theme.css">
+    <link rel="stylesheet" href="index.css">
   </head>
   <body>
-    <input id="roomId" type="text" placeholder="Input the room ID..."><input id="joinButton" type="button" value="Join">
+    <div class="modal" tabindex="-1" role="dialog" style="display: block;">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-body">
+            <form id="signInForm" class="form-horizontal">
+              <div class="form-group">
+                <label for="roomId" class="col-sm-3 control-label">Conference ID:</label>
+                <div class="col-sm-9">
+                  <input type="text" class="form-control" id="roomId" placeholder="Input the conference ID..." required>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <div class="col-sm-offset-3 col-sm-9">
+                  <div class="checkbox">
+                    <label>
+                      <input id="enableAudio" type="checkbox"> Enable audio
+                    </label>
+                  </div>
+                  <div class="checkbox">
+                    <label>
+                      <input id="enableVideo" type="checkbox"> Enable video
+                    </label>
+                  </div>
+                  <div class="checkbox">
+                    <label>
+                      <input id="enableData" type="checkbox"> Enable data
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <div class="col-sm-offset-3 col-sm-9">
+                  <button type="submit" class="btn btn-default">Sign in</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div><!-- /.modal-content -->
+      </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+
     <script type="application/dart" src="index.dart"></script>
     <script src="packages/browser/dart.js"></script>
   </body>

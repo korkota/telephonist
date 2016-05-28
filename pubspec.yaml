@@ -1,8 +1,13 @@
 name: telephonist
 description: A sample command-line application
 dependencies:
+  bootstrap: "3.3.4"
   browser: any
   redis_client: any
   ripple: any
   stomp: any
   args: any
+#transformers:
+#- bootstrap:
+#    url: //maxcdn.bootstrapcdn.com/bootstrap/3.3.4
+#    version: 3.3.4
