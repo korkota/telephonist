@@ -14,7 +14,9 @@ import 'package:telephonist/stomp_clients.dart';
 class TelephonistServer {
   /// Идентификатор сигнального сервера.
   String id;
-  
+
+  int _connectionsCounter = 0;
+
   /// Клиент для доступа к общим данным.
   RedisClient redisClient;
   
@@ -26,6 +28,8 @@ class TelephonistServer {
 
   /// Список сокетов, подключенных к серверу.
   Map<String, WebSocket> _sockets = new Map<String, WebSocket>();
+
+  Map<WebSocket, String> _ids = new Map<WebSocket, String>();
   
   /// Контроллер для отправки сообщений подписчикам.
   StreamController _messageController = new StreamController();
@@ -48,7 +52,7 @@ class TelephonistServer {
       redisClient.smembers('room:' + message['room']).then((Set<String> sockets) {
         var newMessage = {
           'type': 'new', 
-          'id': this.id + ':' + socket.hashCode.toString()
+          'id': this.id + ':' + _ids[socket]
         };
         
         newMessage = JSON.encode(newMessage);
@@ -63,7 +67,7 @@ class TelephonistServer {
         var peersMessage = JSON.encode({
           'type': 'peers',
           'connections': sockets.toList(),
-          'you': this.id + ':' + socket.hashCode.toString()
+          'you': this.id + ':' + _ids[socket]
         });
         
         print(peersMessage.toString());
@@ -71,8 +75,8 @@ class TelephonistServer {
         socket.add(peersMessage);
       });
 
-      redisClient.sadd('room:' + message['room'], this.id + ':' + socket.hashCode.toString());
-      redisClient.sadd(this.id + ':' + socket.hashCode.toString(), message['room']);
+      redisClient.sadd('room:' + message['room'], this.id + ':' + _ids[socket]);
+      redisClient.sadd(this.id + ':' + _ids[socket], message['room']);
     });
 
     onOffer.listen((message) {
@@ -83,7 +87,7 @@ class TelephonistServer {
       var newMessage = {
         'type': 'offer',
         'description': message['description'],
-        'id': this.id + ':' + socket.hashCode.toString()
+        'id': this.id + ':' + _ids[socket]
        };
       
       newMessage = JSON.encode(newMessage);
@@ -102,7 +106,7 @@ class TelephonistServer {
       var newMessage = {
         'type': 'answer',
         'description': message['description'],
-        'id': this.id + ':' + socket.hashCode.toString()
+        'id': this.id + ':' + _ids[socket]
       };
       
       newMessage = JSON.encode(newMessage);
@@ -122,7 +126,7 @@ class TelephonistServer {
         'type': 'candidate',
         'label': message['label'],
         'candidate': message['candidate'],
-        'id': this.id + ':' + socket.hashCode.toString()
+        'id': this.id + ':' + _ids[socket]
       };
       
       newMessage = JSON.encode(newMessage);
@@ -169,7 +173,9 @@ class TelephonistServer {
       _server = server;
 
       _server.transform(new WebSocketTransformer()).listen((WebSocket socket) {
-        _sockets[this.id + ':' + socket.hashCode.toString()] = socket;
+        _connectionsCounter++;
+        _ids[socket] = _connectionsCounter.toString();
+        _sockets[this.id + ':' + _ids[socket]] = socket;
 
         socket.listen((m) {
           print("Recieve $m");
@@ -178,8 +184,9 @@ class TelephonistServer {
           _messageController.add(message);
         },
         onDone: () {
-          var id = this.id + ':' + socket.hashCode.toString();
+          var id = this.id + ':' + _ids[socket];
           _sockets.remove(id);
+          _ids.remove(socket);
 
           redisClient.smembers(id)
           .then((Set<String> rooms) => Future.wait(rooms.map((room) => redisClient.srem('room:' + room.toString(), id))))

@@ -120,32 +120,32 @@ class TelephonistClient {
 
   get onData => _messageStream.where((m) => m['type'] == 'data');
 
-  createStream({ audio: false, video: false }) {
+  createStream({ audio: false, video: false, data: false }) {
     var completer = new Completer<MediaStream>();
 
     onPeers.first.then((_) {
 
-    window.navigator.getUserMedia(audio: audio, video: video).then((stream) {
-      var video = new VideoElement()
-        ..autoplay = true
-        ..src = Url.createObjectUrl(stream);
+      window.navigator.getUserMedia(audio: audio, video: video).then((stream) {
+        var video = new VideoElement()
+          ..autoplay = true
+          ..src = Url.createObjectUrl(stream);
 
-      _streams.add(stream);
+        _streams.add(stream);
 
-      _sockets.forEach((s) {
-        _connections[s] = _createPeerConnection(s);
+        _sockets.forEach((s) {
+          _connections[s] = _createPeerConnection(s);
+        });
+
+        _streams.forEach((s) {
+          _connections.forEach((k, c) => c.addStream(s));
+        });
+
+        _connections.forEach((s, c) => _createDataChannel(s, c));
+
+        _connections.forEach((s, c) => _createOffer(s, c));
+
+        completer.complete(stream);
       });
-
-      _streams.forEach((s) {
-        _connections.forEach((k, c) => c.addStream(s));
-      });
-
-      _connections.forEach((s, c) => _createDataChannel(s, c));
-
-      _connections.forEach((s, c) => _createOffer(s, c));
-
-      completer.complete(stream);
-    });
     });
     return completer.future;
   }
