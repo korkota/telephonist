@@ -25,7 +25,7 @@ class TelephonistClient {
 
   var _dataConfig = {
     'optional': [{
-      'RtpDataChannels': true
+      'RtpDataChannels': false
     }, {
       'DtlsSrtpKeyAgreement': true
     }]
@@ -120,10 +120,10 @@ class TelephonistClient {
 
   get onData => _messageStream.where((m) => m['type'] == 'data');
 
-  createStream({ audio: false, video: false }) async {
+  createStream({ audio: false, video: false }) {
     var completer = new Completer<MediaStream>();
 
-    await onPeers.first;
+    onPeers.first.then((_) {
 
     window.navigator.getUserMedia(audio: audio, video: video).then((stream) {
       var video = new VideoElement()
@@ -146,7 +146,7 @@ class TelephonistClient {
 
       completer.complete(stream);
     });
-
+    });
     return completer.future;
   }
 
