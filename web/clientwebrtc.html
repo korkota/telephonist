@@ -5,12 +5,19 @@
     <meta charset="utf-8">
     <title>ClientWebRTC</title>
     <link rel="stylesheet" href="clientwebrtc.css">
+    <link rel="stylesheet" href="packages/bootstrap/css/bootstrap.css">
+    <link rel="stylesheet" href="packages/bootstrap/css/bootstrap-theme.css">
   </head>
   <body>
     <div id="opponents"></div><div id="chat">
       <div id="messages"></div>
       <div class="buttons">
-        <input id="message" type="text" placeholder="Input the message.."> <input id="sendButton" type="button" value="Send">
+        <form class="form" id="messageForm">
+          <div class="form-group">
+            <input type="text" class="form-control" id="message" placeholder="Input the message.." required>
+          </div>
+          <button type="submit" class="btn btn-default">Send</button>
+        </form>
       </div>
     </div>
     <script type="application/dart" src="clientwebrtc.dart"></script>
