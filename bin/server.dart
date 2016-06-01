@@ -11,14 +11,21 @@ import 'package:telephonist/telephonist_util.dart';
 
 main(List<String> args) async {
   Map appConfig = parseArgs(args);
+  
+  Logger.root.level = Level.ALL;
+  Logger.root.onRecord.listen((LogRecord rec) {
+    print('${rec.level.name}: ${rec.time}: ${config['id']} ${rec.message}');
+  });
+  final Logger log = new Logger('master');
+
 
   for (int workerId = 0; workerId < appConfig['threads']; workerId++) {
     Map workerConfig = new Map.from(appConfig);
     workerConfig['id'] = [appConfig['id'], 'isolate', workerId.toString()].join('_');
-    await Isolate.spawn(worker, workerConfig);
+     
+    Isolate isolate = await Isolate.spawn(worker, workerConfig);
+    isolate.errors.listen(log.shout);
   }
-
-  while (true);
 }
 
 worker(Map config) async {
