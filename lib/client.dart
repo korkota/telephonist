@@ -126,10 +126,6 @@ class TelephonistClient {
     onPeers.first.then((_) {
 
       window.navigator.getUserMedia(audio: audio, video: video).then((stream) {
-        var video = new VideoElement()
-          ..autoplay = true
-          ..src = Url.createObjectUrl(stream);
-
         _streams.add(stream);
 
         _sockets.forEach((s) {

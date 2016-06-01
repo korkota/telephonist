@@ -13,6 +13,7 @@ void main() {
   telephonist.createStream(video: enableVideo, audio: enableAudio, data: enableData).then((stream) {
     var video = new VideoElement()
       ..autoplay = true
+      ..volume = 0
       ..src = Url.createObjectUrl(stream);
 
     querySelector("#opponents").append(video);
