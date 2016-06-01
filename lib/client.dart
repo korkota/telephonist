@@ -200,12 +200,13 @@ class TelephonistClient {
     });
 
     channel.onClose.listen((e){});
+    channel.onError.listen(print);
 
     _data[id] = channel;
   }
 
   _createDataChannel(id, RtcPeerConnection pc, { label: 'RTCDataChannel' }) {
-    var channel = pc.createDataChannel(label, { 'reliable': false });
+    var channel = pc.createDataChannel(label, { 'reliable': true });
     _addDataChannel(id, channel);
   }
 

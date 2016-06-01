@@ -4,9 +4,9 @@ dependencies:
   bootstrap: "3.3.4"
   browser: any
   redis_client: any
-  ripple: any
   stomp: any
   args: any
+  logging: 0.11.3
 #transformers:
 #- bootstrap:
 #    url: //maxcdn.bootstrapcdn.com/bootstrap/3.3.4

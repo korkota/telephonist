@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:isolate';
 
+import 'package:logging/logging.dart';
+
 import 'package:telephonist/server.dart';
 import 'package:telephonist/redis_client.dart';
 import 'package:telephonist/stomp_clients.dart';
@@ -20,7 +22,11 @@ main(List<String> args) async {
 }
 
 worker(Map config) async {
-  print(config);
+  Logger.root.level = Level.ALL;
+  Logger.root.onRecord.listen((LogRecord rec) {
+    print('${rec.level.name}: ${rec.time}: ${config['id']} ${rec.message}');
+  });
+
   StompClients stompClients = new StompClients(config['brokers'].map((String raw) => new HostAndPort.fromString(raw)));
   HostAndPort store = new HostAndPort.fromString(config['store']);
 

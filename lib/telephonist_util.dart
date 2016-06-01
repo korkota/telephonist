@@ -1,5 +1,7 @@
 library telephonist_util;
 
+import 'dart:convert';
+
 class HostAndPort {
   String _host;
   int _port;
@@ -30,3 +32,6 @@ class SocketId {
   
   String toString() => _socketId;
 }
+
+JsonEncoder encoder = new JsonEncoder.withIndent('  ');
+Function prettyJson = (json) => encoder.convert(json);

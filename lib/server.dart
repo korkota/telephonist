@@ -4,6 +4,8 @@ import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:logging/logging.dart';
+
 import 'package:telephonist/telephonist_util.dart';
 import 'package:telephonist/redis_client.dart';
 import 'package:telephonist/stomp_clients.dart';
@@ -37,6 +39,8 @@ class TelephonistServer {
   /// Поток сообщений для подписчиков.
   Stream _messages;
 
+  final Logger _log = new Logger('server');
+
   TelephonistServer({this.id, this.redisClient, this.stompClients}) {
     // Получаем поток, на который можно подписаться множество раз.
     _messages = _messageController.stream.asBroadcastStream();
@@ -52,7 +56,7 @@ class TelephonistServer {
       redisClient.smembers('room:' + message['room']).then((Set<String> sockets) {
         var newMessage = {
           'type': 'new', 
-          'id': this.id + ':' + _ids[socket]
+          'id': id + ':' + _ids[socket]
         };
         
         newMessage = JSON.encode(newMessage);
@@ -64,19 +68,19 @@ class TelephonistServer {
             });
         });
         
-        var peersMessage = JSON.encode({
+        var peersMessage = {
           'type': 'peers',
           'connections': sockets.toList(),
-          'you': this.id + ':' + _ids[socket]
-        });
+          'you': id + ':' + _ids[socket]
+        };
+
+        _log.info("has sent the message to the connection #${peersMessage['you']}:\n${prettyJson(peersMessage)}");
         
-        print(peersMessage.toString());
-        
-        socket.add(peersMessage);
+        socket.add(JSON.encode(peersMessage));
       });
 
-      redisClient.sadd('room:' + message['room'], this.id + ':' + _ids[socket]);
-      redisClient.sadd(this.id + ':' + _ids[socket], message['room']);
+      redisClient.sadd('room:' + message['room'], id + ':' + _ids[socket]);
+      redisClient.sadd(id + ':' + _ids[socket], message['room']);
     });
 
     onOffer.listen((message) {
@@ -87,7 +91,7 @@ class TelephonistServer {
       var newMessage = {
         'type': 'offer',
         'description': message['description'],
-        'id': this.id + ':' + _ids[socket]
+        'id': id + ':' + _ids[socket]
        };
       
       newMessage = JSON.encode(newMessage);
@@ -106,7 +110,7 @@ class TelephonistServer {
       var newMessage = {
         'type': 'answer',
         'description': message['description'],
-        'id': this.id + ':' + _ids[socket]
+        'id': id + ':' + _ids[socket]
       };
       
       newMessage = JSON.encode(newMessage);
@@ -126,7 +130,7 @@ class TelephonistServer {
         'type': 'candidate',
         'label': message['label'],
         'candidate': message['candidate'],
-        'id': this.id + ':' + _ids[socket]
+        'id': id + ':' + _ids[socket]
       };
       
       newMessage = JSON.encode(newMessage);
@@ -139,12 +143,16 @@ class TelephonistServer {
   }
 
   void _onStompMessage(Map<String, String> headers, Object message) {
-    print("Server ${id} has got message: $message");
     WebSocket socket = _sockets[message['destination']];
+    String prettyMessage = prettyJson(JSON.decode(message['data']));
+
+    _log.info('has got the message from brocker:\n${prettyJson(message)}');
+
     if (socket != null) {
+      _log.info('has got the message from brocker and has sent it to connection #${message['destination']}:\n$prettyMessage');
       socket.add(message['data']);
     } else {
-      print('Wrong destination!');
+      _log.warning('has got the message with the wrong destionation:\n$prettyMessage');
     }
   }
 
@@ -170,42 +178,50 @@ class TelephonistServer {
 
   Future<TelephonistServer> listen(String host, num port) {
     return HttpServer.bind(host, port, shared: true).then((HttpServer server) {
+      _log.info('has been launched on $host:$port.');
+
       _server = server;
 
       _server.transform(new WebSocketTransformer()).listen((WebSocket socket) {
         _connectionsCounter++;
-        _ids[socket] = _connectionsCounter.toString();
-        _sockets[this.id + ':' + _ids[socket]] = socket;
+        _log.info('has got the new connection #$_connectionsCounter.');
 
-        socket.listen((m) {
-          print("Recieve $m");
-          var message = JSON.decode(m);
+        _ids[socket] = _connectionsCounter.toString();
+        _sockets[id + ':' + _ids[socket]] = socket;
+
+        socket.listen((String serializedMessage) {
+          Map message = JSON.decode(serializedMessage);
+          _log.info('has got the message from the connection #${_ids[socket]}:\n${prettyJson(message)}');
           message['_socket'] = socket;
           _messageController.add(message);
         },
         onDone: () {
-          var id = this.id + ':' + _ids[socket];
-          _sockets.remove(id);
+          _log.info('has lost the conntection #${_ids[socket]} to the client.');
+
+          String globalId = id + ':' + _ids[socket];
+          _sockets.remove(globalId);
           _ids.remove(socket);
 
-          redisClient.smembers(id)
-          .then((Set<String> rooms) => Future.wait(rooms.map((room) => redisClient.srem('room:' + room.toString(), id))))
-          .then((_) => redisClient.smembers(id))
+          redisClient.smembers(globalId)
+          .then((Set<String> rooms) => Future.wait(rooms.map((room) => redisClient.srem('room:' + room.toString(), globalId))))
+          .then((_) => redisClient.smembers(globalId))
           .then((Set<String> rooms) => Future.wait(rooms.map((room) => redisClient.smembers('room:' + room.toString()))))
           .then((soketsIdsOfRoom) {
             soketsIdsOfRoom.forEach((socketsIds) => socketsIds.map((String id) => new SocketId(id)).forEach((SocketId socketId) {             
-              var data = JSON.encode({
+              String data = JSON.encode({
                 'type': 'leave',
-                'id': id
+                'id': globalId
               });
-              
-              stompClients.sendJson('/${socketId.serverId}', {
-                'destination': socketId.toString(), 
+
+              Map message = {
+                'destination': socketId.toString(),
                 'data': data
-              }); 
+              };
+
+              stompClients.sendJson('/${socketId.serverId}', message);
             }));
           })
-          .then((_) => redisClient.del(id));
+          .then((_) => redisClient.del(globalId));
         });
       });
 
