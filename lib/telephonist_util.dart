@@ -35,3 +35,5 @@ class SocketId {
 
 JsonEncoder encoder = new JsonEncoder.withIndent('  ');
 Function prettyJson = (json) => encoder.convert(json);
+
+Function buildGlobalId = (serverId, connectionId) => '$serverId:$connectionId';

@@ -56,7 +56,7 @@ class TelephonistServer {
       redisClient.smembers('room:' + message['room']).then((Set<String> sockets) {
         var newMessage = {
           'type': 'new', 
-          'id': id + ':' + _ids[socket]
+          'id': buildGlobalId(id, _ids[socket])
         };
         
         newMessage = JSON.encode(newMessage);
@@ -71,7 +71,7 @@ class TelephonistServer {
         var peersMessage = {
           'type': 'peers',
           'connections': sockets.toList(),
-          'you': id + ':' + _ids[socket]
+          'you': buildGlobalId(id, _ids[socket])
         };
 
         _log.info("has sent the message to the connection #${peersMessage['you']}:\n${prettyJson(peersMessage)}");
@@ -79,8 +79,8 @@ class TelephonistServer {
         socket.add(JSON.encode(peersMessage));
       });
 
-      redisClient.sadd('room:' + message['room'], id + ':' + _ids[socket]);
-      redisClient.sadd(id + ':' + _ids[socket], message['room']);
+      redisClient.sadd('room:' + message['room'], buildGlobalId(id, _ids[socket]));
+      redisClient.sadd(buildGlobalId(id, _ids[socket]), message['room']);
     });
 
     onOffer.listen((message) {
@@ -91,7 +91,7 @@ class TelephonistServer {
       var newMessage = {
         'type': 'offer',
         'description': message['description'],
-        'id': id + ':' + _ids[socket]
+        'id': buildGlobalId(id, _ids[socket])
        };
       
       newMessage = JSON.encode(newMessage);
@@ -110,7 +110,7 @@ class TelephonistServer {
       var newMessage = {
         'type': 'answer',
         'description': message['description'],
-        'id': id + ':' + _ids[socket]
+        'id': buildGlobalId(id, _ids[socket])
       };
       
       newMessage = JSON.encode(newMessage);
@@ -130,7 +130,7 @@ class TelephonistServer {
         'type': 'candidate',
         'label': message['label'],
         'candidate': message['candidate'],
-        'id': id + ':' + _ids[socket]
+        'id': buildGlobalId(id, _ids[socket])
       };
       
       newMessage = JSON.encode(newMessage);
@@ -187,7 +187,7 @@ class TelephonistServer {
         _log.info('has got the new connection #$_connectionsCounter.');
 
         _ids[socket] = _connectionsCounter.toString();
-        _sockets[id + ':' + _ids[socket]] = socket;
+        _sockets[buildGlobalId(id, _ids[socket])] = socket;
 
         socket.listen((String serializedMessage) {
           Map message = JSON.decode(serializedMessage);
@@ -198,7 +198,7 @@ class TelephonistServer {
         onDone: () {
           _log.info('has lost the conntection #${_ids[socket]} to the client.');
 
-          String globalId = id + ':' + _ids[socket];
+          String globalId = buildGlobalId(id, _ids[socket]);
           _sockets.remove(globalId);
           _ids.remove(socket);
 
